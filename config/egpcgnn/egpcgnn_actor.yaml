@@ -1,0 +1,200 @@
+dataset:
+  # 原始数据划分方式。
+  # 如果主程序中调用 get_classnum_imb_split()，
+  # 这里的原始划分会被类别不平衡划分覆盖。
+  split_type: percent
+
+  train_size: ~
+  val_size: ~
+  test_size: ~
+
+  train_percent: 0.1
+  val_percent: 0.1
+  test_percent: 0.8
+
+  train_examples_per_class: ~
+  val_examples_per_class: ~
+  test_examples_per_class: ~
+
+  feat_norm: false
+  adj_norm: true
+  add_self_loop: true
+  from_npz_largest_component: false
+  sparse: true
+
+
+# =====================================================
+# 类别不平衡设置
+# =====================================================
+imbalance:
+  # 类别不平衡类型。
+  type: class
+
+  # 类别不平衡比例。
+  imb_ratio: 10
+
+  # 每个类别至少保留的训练节点数。
+  min_train_per_class: 1
+
+  # 是否打印类别不平衡划分结果。
+  debug: true
+
+
+# =====================================================
+# 算法基本信息
+# =====================================================
+algorithm: EGPC_GNN1
+task: node
+backbone: GCN
+
+
+# =====================================================
+# EGPC-GNN1 模型结构参数
+# =====================================================
+model:
+  # 方法名称。
+  # 需要和主程序中的 --method 对应。
+  method: egpcgnn1
+
+  # 输入特征维度和类别数。
+  # 通常会在 main.py 中根据数据集自动覆盖。
+  n_feat: ~
+  n_class: ~
+
+  # 隐藏维度。
+  n_hidden: 256
+
+
+  # 图传播证据分支的 GCN 层数。
+  n_layer: 2
+
+  # 节点自身证据分支层数。
+  self_layers: 2
+
+  # dropout 概率。
+  dropout: 0.5
+
+  # GCN 激活函数。
+  act: F.relu
+
+  # 是否使用额外输入层。
+  input_layer: false
+
+  # 是否使用额外输出层。
+  output_layer: false
+
+  # 归一化信息。
+  norm_info: ~
+
+  # GCN 设置。
+  batch_norm: false
+  residual: false
+
+  # 补全锚点映射器是否使用两层 MLP。
+  anchor_two_layers: true
+
+
+# =====================================================
+# EGPC-GNN1 损失与证据补全参数
+# =====================================================
+loss:
+  # 最终分类损失权重。
+  lambda_cls: 1.0
+
+  # 证据监督损失权重。
+  # 建议先用 0.2，避免 self/prop 证据分支过强干扰最终分类。
+  lambda_e: 0.7
+
+  # 补全一致性损失权重。
+  # 新版方法刚开始建议小一点，避免 anchor 约束过强。
+  lambda_c: 0.1
+
+  # 数值稳定项。
+  eps: 0.000000000001
+  egpc_eps: 0.000000000001
+
+  # 是否阻断补全权重 w_i 的梯度。
+  egpc_stop_weight_grad: true
+
+  # 无标签节点是否使用 q_self 加权的软参考原型。
+  egpc_soft_unlabeled_anchor: true
+
+  # 是否使用类均衡交叉熵。
+  # 类别不平衡任务中建议开启。
+  use_class_balanced_loss: true
+
+  # 是否使用 warmup。
+  # warmup 阶段只训练基础分类和证据分支，不启用补全。
+  use_warmup: true
+
+  # warmup 轮数。
+  warmup: 100
+
+  # 最大补全权重。
+  # 新版理论中可不写该参数，但工程上建议保留，防止补全过强。
+  # 先从 0.05 开始试。
+  egpc_max_w: 0.20
+
+  # 类内标准化是否允许使用无标签节点辅助统计。
+  # 训练节点过少时，建议开启，避免尾部类标准差过小导致 w_i 爆炸。
+  standardize_with_unlabeled: true
+
+  # 当某个类别有标签节点数小于该值时，
+  # 使用所有参考类别节点进行类内统计。
+  min_labeled_for_class_stat: 3
+
+  # 是否保存或返回辅助变量。
+  return_aux: true
+
+
+# =====================================================
+# 训练参数
+# =====================================================
+training:
+  # 随机种子。
+  seed: 75
+
+  # 优化器参数。
+  lr: 0.01
+  weight_decay: 0.0005
+
+  # 训练轮数。
+  n_epochs: 800
+
+
+  # 早停 patience。
+  patience: 200
+
+  # 至少训练轮数。
+  least_epoch: 200
+
+  # 评价和打印频率。
+  eval_every: 1
+  print_every: 50
+
+  # 类别不平衡任务中，不建议优先用 acc 早停。
+  # 推荐 macro_f1 或 bacc。
+  criterion: metric
+  select_metric: macro_f1
+
+  # 是否打印训练调试信息。
+  debug: true
+
+
+# =====================================================
+# 分析与保存设置
+# =====================================================
+analysis:
+  flag: false
+  project: gnn-with-class-imbalance
+
+  save_graph: false
+
+  # 是否保存每轮的 w、margin drop 等中间统计。
+  save_aux: false
+
+  # 是否打印补全权重统计。
+  print_weight_stat: true
+
+  # 是否打印 margin drop 统计。
+  print_margin_stat: true
